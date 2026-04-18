@@ -1,0 +1,15 @@
+# Složky se zkompilovanými programy a mezivýsledky sestavení
+/bin/
+/build/
+
+# Objektové soubory a soubory závislostí (pro jistotu, i kdyby vznikly mimo /build/)
+*.o
+*.d
+
+# Konfigurační soubory vývojového prostředí IDE (Geany)
+*.geany
+ZKP.geany
+
+# Ignorování obecných binárních souborů s výjimkou unidata.bin
+*.bin
+!unidata.bin
