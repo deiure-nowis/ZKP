@@ -4,23 +4,23 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-typedef struct {
-    unsigned int id;
-    char *question;
-    char *answer;
+typedef struct{
+	unsigned int id;
+	char *question;
+	char *answer;
 } QAPair;
 
-typedef struct {
-    char name[64];
-    QAPair *pairs;
-    size_t count;
-    size_t capacity;
+typedef struct{
+	char name[64];
+	QAPair *pairs;
+	size_t count;
+	size_t capacity;
 } QASet;
 
-typedef struct {
-    QASet *sets;
-    size_t count;
-    size_t capacity;
+typedef struct{
+	QASet *sets;
+	size_t count;
+	size_t capacity;
 } QADatabase;
 
 void db_init(QADatabase *db);

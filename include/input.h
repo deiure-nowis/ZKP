@@ -1,11 +1,11 @@
 #ifndef INPUT_H
 #define INPUT_H
 
-typedef enum {
-    KEY_UP,
-    KEY_DOWN,
-    KEY_ENTER,
-    KEY_OTHER
+typedef enum{
+	KEY_UP,
+	KEY_DOWN,
+	KEY_ENTER,
+	KEY_OTHER
 } Key;
 
 int get_keypress(void);
