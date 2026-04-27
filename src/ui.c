@@ -175,6 +175,94 @@ static void shuffle_indices(size_t *array, size_t n){
 	}
 }
 
+static void ui_run_smart_practice(QASet *set) {
+	if (set->count == 0) {
+		printf("Sada je prázdná!\n");
+		get_keypress();
+		return;
+	}
+
+	// Inicializace: začínáme se všemi otázkami
+	size_t remaining_count = set->count;
+	size_t *current_indices = malloc(remaining_count * sizeof(size_t));
+	for (size_t i = 0; i < remaining_count; i++) current_indices[i] = i;
+
+	int round = 1;
+	bool quit = false;
+
+	while (remaining_count > 0 && !quit) {
+		// Zamícháme jen ty, které zbývají pro toto kolo
+		shuffle_indices(current_indices, remaining_count);
+
+		// Pomocné pole pro otázky, které uživatel v tomto kole odpoví špatně
+		size_t *next_round_indices = malloc(remaining_count * sizeof(size_t));
+		size_t next_round_count = 0;
+
+		for (size_t i = 0; i < remaining_count; i++) {
+			clear_screen();
+			QAPair *p = &set->pairs[current_indices[i]];
+
+			printf("=== CHYTRÉ CVIČENÍ: %s ===\n", set->name);
+			printf("Kolo: %d | Zbývá k naučení: %zu\n", round, remaining_count - i);
+			printf("(Pro ukončení napište '/q')\n\n");
+			
+			printf("Otázka: %s\n", p->question);
+			
+			char ans[2048];
+			read_string("Vaše odpověď: ", ans, sizeof(ans));
+
+			if (strcmp(ans, "/q") == 0) {
+				quit = true;
+				break;
+			}
+
+			printf("\n");
+			if (strcmp(ans, p->answer) == 0) {
+				printf("[V] Správně! (Tato otázka v tomto kole končí)\n");
+			} else {
+				printf("[X] Špatně!\n");
+				printf("Vaše odpověď:  %s\n", ans);
+				printf("Uložená odp.:  %s\n", p->answer);
+				
+				// Přidáme index do seznamu pro příští kolo
+				next_round_indices[next_round_count++] = current_indices[i];
+			}
+
+			if (p->has_description) {
+				printf("\n> Vysvětlení: %s\n", p->description);
+			}
+
+			printf("\nStiskněte libovolnou klávesu...");
+			get_keypress();
+		}
+
+		// Příprava na další kolo
+		free(current_indices);
+		current_indices = next_round_indices;
+		remaining_count = next_round_count;
+		round++;
+
+		if (remaining_count > 0 && !quit) {
+			clear_screen();
+			printf("=== KOLO %d DOKONČENO ===\n\n", round - 1);
+			printf("Počet chyb (postupuje do dalšího kola): %zu\n", remaining_count);
+			printf("Stiskněte klávesu pro pokračování v dalším kole...");
+			get_keypress();
+		}
+	}
+
+	if (!quit) {
+		clear_screen();
+		printf("=== GRATULUJEME! ===\n\n");
+		printf("Všechny otázky ze sady '%s' byly správně zodpovězeny.\n", set->name);
+		printf("Počet kol: %d\n", round - 1);
+		printf("\nStiskněte klávesu pro návrat...");
+		get_keypress();
+	}
+
+	free(current_indices);
+}
+
 // Vypsání všech otázek v sadě
 static void ui_list_all_qa(QASet *set){
 	clear_screen();
@@ -250,12 +338,14 @@ static void ui_practice_set_menu(QASet *set){
 		printf("[1] Vypsat všechny otázky a odpovědi\n");
 		printf("[2] Projít popořadě\n");
 		printf("[3] Projít náhodně\n");
+		printf("[4] CHYTRÉ CVIČENÍ (opakovat chyby)\n");
 		printf("[0] Zpět\n");
 
 		int key = get_keypress();
 		if(key == '1') ui_list_all_qa(set);
 		else if(key == '2') ui_run_practice(set, false);
 		else if(key == '3') ui_run_practice(set, true);
+		else if(key == '4') ui_run_smart_practice(set);
 		else if(key == '0') break;
 	}
 }
