@@ -8,6 +8,8 @@ typedef struct{
 	unsigned int id;
 	char *question;
 	char *answer;
+	bool has_description;
+	char *description;
 } QAPair;
 
 typedef struct{
@@ -26,11 +28,12 @@ typedef struct{
 void db_init(QADatabase *db);
 void db_free(QADatabase *db);
 
-bool db_load_from_file(QADatabase *db, const char *filename);
-bool db_save_to_file(const QADatabase *db, const char *filename);
+void db_load_all_sets(QADatabase *db);
+bool db_save_all_sets(const QADatabase *db);
 
 QASet* db_add_set(QADatabase *db, const char *name);
-bool db_add_qa_to_set(QASet *set, const char *q, const char *a);
+bool db_add_qa_to_set(QASet *set, const char *q, const char *a, const char *desc);
 void db_remove_qa_at_index(QASet *set, size_t index);
+void db_remove_set_at_index(QADatabase *db, size_t index);
 
 #endif // DATABASE_H

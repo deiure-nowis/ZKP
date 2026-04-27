@@ -10,6 +10,6 @@
 *.geany
 ZKP.geany
 
-# Ignorování obecných binárních souborů s výjimkou unidata.bin
+# Ignorování obecných binárních souborů
 *.bin
-!unidata.bin
+/Data/*.bin

@@ -5,15 +5,13 @@
 #include "ui.h"
 #include "input.h"
 
-#define DB_FILENAME "unidata.bin"
-
 int main(){
-	// Inicializace generátoru náhodných čísel pro náhodné zkoušení
 	srand((unsigned int)time(NULL));
 
 	QADatabase db;
 	db_init(&db);
-	db_load_from_file(&db, DB_FILENAME);
+	//db_load_from_file(&db, DB_FILENAME);
+	db_load_all_sets(&db);
 
 	bool running = true;
 	while(running){
@@ -38,7 +36,8 @@ int main(){
 
 	clear_screen();
 	printf("Ukládám data...\n");
-	db_save_to_file(&db, DB_FILENAME);
+	//db_save_to_file(&db, DB_FILENAME);
+	db_save_all_sets(&db);
 	db_free(&db);
 	
 	return 0;

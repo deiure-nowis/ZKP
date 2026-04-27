@@ -14,8 +14,14 @@ static void ui_edit_qa(QASet *set, size_t index){
 		printf("=== ÚPRAVA OTÁZKY [ID: %u] ===\n", p->id);
 		printf("Q: %s\n", p->question);
 		printf("A: %s\n\n", p->answer);
+		if(p->has_description){
+			printf("Popis: %s\n", p->description);
+		}else{
+			printf("Popis: (není)\n");
+		}
 		printf("[1] Upravit OTÁZKU\n");
 		printf("[2] Upravit ODPOVĚĎ\n");
+		printf("[3] Upravit POPISEK\n");
 		printf("[X] SMAZAT záznam\n");
 		printf("[0] Zpět\n");
 
@@ -30,6 +36,13 @@ static void ui_edit_qa(QASet *set, size_t index){
 			read_string("Nová odpověď: ", buf, sizeof(buf));
 			free(p->answer);
 			p->answer = strdup(buf);
+		}else if(key == '3'){
+			char buf[4096];
+            read_string("Nový popisek (nechte prázdné pro smazání): ", buf, sizeof(buf));
+            if(p->has_description) free(p->description);
+            p->has_description = (strlen(buf) > 0);
+            if(p->has_description) p->description = strdup(buf);
+            else p->description = NULL;
 		}else if(key == 'x' || key == 'X'){
 			db_remove_qa_at_index(set, index);
 			editing = false;
@@ -70,31 +83,44 @@ static void ui_browse_qa_in_set(QASet *set){
 
 // --- HLAVNÍ EDITOR SADY ---
 
-static void ui_set_editor(QASet *set){
-	while(1){
-		clear_screen();
-		printf("=== EDITACE SADY: %s ===\n", set->name);
-		printf("Počet otázek: %zu\n\n", set->count);
-		printf("[1] Přidat nové otázky\n");
-		printf("[2] Prohlížet / Upravit / Smazat otázky\n");
-		printf("[0] Zpět\n");
+static bool ui_set_editor(QADatabase *db, size_t set_index) {
+    while (1) {
+        QASet *set = &db->sets[set_index]; 
+        
+        clear_screen();
+        printf("=== EDITACE SADY: %s ===\n", set->name);
+        printf("Počet otázek: %zu\n\n", set->count);
+        printf("[1] Přidat nové otázky\n");
+        printf("[2] Prohlížet / Upravit / Smazat otázky\n");
+        printf("[X] SMAZAT CELOU SADU\n");
+        printf("[0] Zpět\n");
 
-		int key = get_keypress();
-		if(key == '1'){
-			while(1){
-				printf("\n--- Přidávání (prázdná otázka = konec) ---\n");
-				char q[1024], a[2048];
-				read_string("Otázka: ", q, sizeof(q));
-				if(strlen(q) == 0) break;
-				read_string("Odpověď: ", a, sizeof(a));
-				db_add_qa_to_set(set, q, a);
-			}
-		}else if(key == '2'){
-			ui_browse_qa_in_set(set);
-		}else if(key == '0'){
-			break;
-		}
-	}
+        int key = get_keypress();
+        if (key == '1') {
+            while (1) {
+                printf("\n--- Přidávání (prázdná otázka = konec) ---\n");
+                char q[1024], a[2048], desc[4096];
+                read_string("Otázka: ", q, sizeof(q));
+                if (strlen(q) == 0) break;
+                read_string("Odpověď: ", a, sizeof(a));
+                read_string("Popisek (nepovinné): ", desc, sizeof(desc));
+                db_add_qa_to_set(set, q, a, desc);
+            }
+        } else if (key == '2') {
+            ui_browse_qa_in_set(set);
+        } else if (key == 'x' || key == 'X') {
+            printf("\n!!! OPRAVDU SMAZAT CELOU SADU '%s'? (A pro ano / cokoli jiného pro ne): ", set->name);
+            int confirm = get_keypress();
+            if (confirm == 'a' || confirm == 'A') {
+                db_remove_set_at_index(db, set_index);
+                printf("\nSada smazána. Stiskněte libovolnou klávesu...");
+                get_keypress();
+                return true;
+            }
+        } else if (key == '0') {
+            return false;
+        }
+    }
 }
 
 // --- VÝBĚR SADY (ZŮSTÁVÁ PODOBNÝ) ---
@@ -119,16 +145,17 @@ void ui_manage_sets(QADatabase *db){
 		if(key == KEY_UP && selected > 0) selected--;
 		if(key == KEY_DOWN && selected < add_idx) selected++;
 		if(key == KEY_ENTER){
-			if(selected == 0) break;
-			if(selected == add_idx){
+			if(selected == 0){
+				break;
+			}else if(selected == add_idx){
 				char name[64];
 				read_string("Název nové sady: ", name, sizeof(name));
 				if(strlen(name) > 0){
 					QASet *s = db_add_set(db, name);
-					if(s) ui_set_editor(s);
+					if(s) ui_set_editor(db, db->count - 1);
 				}
 			}else{
-				ui_set_editor(&db->sets[selected - 1]);
+				ui_set_editor(db, selected - 1);
 			}
 		}
 	}
@@ -158,6 +185,8 @@ static void ui_list_all_qa(QASet *set){
 		for(size_t i = 0; i < set->count; i++){
 			printf("Q: %s\n", set->pairs[i].question);
 			printf("A: %s\n", set->pairs[i].answer);
+			if(set->pairs[i].has_description)
+				printf("Info: %s\n", set->pairs[i].description);
 			printf("------------------------\n");
 		}
 	}
@@ -174,13 +203,11 @@ static void ui_run_practice(QASet *set, bool random){
 		return;
 	}
 
-	// Vytvoříme pole indexů, abychom mohli procházet náhodně bez úpravy původní databáze
 	size_t *indices = malloc(set->count * sizeof(size_t));
 	for(size_t i = 0; i < set->count; i++) indices[i] = i;
 
-	if(random){
+	if(random)
 		shuffle_indices(indices, set->count);
-	}
 
 	for(size_t i = 0; i < set->count; i++){
 		clear_screen();
@@ -192,13 +219,9 @@ static void ui_run_practice(QASet *set, bool random){
 		char ans[2048];
 		read_string("Vaše odpověď: ", ans, sizeof(ans));
 
-		// Možnost kdykoliv odejít
-		if(strcmp(ans, "/q") == 0){
-			break; 
-		}
+		if(strcmp(ans, "/q") == 0) break; 
 
 		printf("\n");
-		// Porovnání odpovědí (zatím case-sensitive přesný zápis)
 		if(strcmp(ans, p->answer) == 0){
 			printf("[V] Správně!\n");
 		}else{
@@ -207,7 +230,10 @@ static void ui_run_practice(QASet *set, bool random){
 		
 		printf("Vaše odpověď:  %s\n", ans);
 		printf("Uložená odp.:  %s\n\n", p->answer);
-		
+
+		if(p->has_description)
+			printf("> Vysvětlení: %s\n\n", p->description);
+
 		printf("Stiskněte libovolnou klávesu pro další otázku...");
 		get_keypress();
 	}
